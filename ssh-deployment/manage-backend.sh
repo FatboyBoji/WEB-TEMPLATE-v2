@@ -123,11 +123,9 @@ start_server() {
     
     log "INFO" "Verifying environment variables..."
     echo "DATABASE_URL from env: ${DATABASE_URL:-Not Set}"
-    # Generate it directly to verify
-    DB_URL="postgresql://${DB_USER:-u0155}:${DB_PASSWORD:-YcROFGC9lu}@${DB_HOST:-178.254.12.86}:${DB_PORT:-5000}/${DB_NAME:-postgres}?schema=public"
-    log "INFO" "Generated DATABASE_URL: $DB_URL"
-    # Export it directly
-    export DATABASE_URL="$DB_URL"
+    # Use the hardcoded schema name to ensure it's correct
+    export DATABASE_URL="postgresql://u0155:YcROFGC9lu@178.254.12.86:5000/postgres?schema=public&search_path=u0155,public"
+    log "INFO" "Generated DATABASE_URL: $DATABASE_URL"
     
     log "INFO" "Starting production server on port $PORT..."
     NODE_ENV=production PORT=$PORT nohup node -r dotenv/config dist/server.js dotenv_config_path=.env.production > "$LOG_FILE" 2>&1 &
