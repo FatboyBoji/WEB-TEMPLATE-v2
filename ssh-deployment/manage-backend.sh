@@ -116,8 +116,21 @@ start_server() {
         return 1
     }
     
+    log "INFO" "Copying environment files..."
+    cp .env.production dist/.env.production || {
+        log "WARN" "Failed to copy environment files"
+    }
+    
+    log "INFO" "Verifying environment variables..."
+    echo "DATABASE_URL from env: ${DATABASE_URL:-Not Set}"
+    # Generate it directly to verify
+    DB_URL="postgresql://${DB_USER:-u0155}:${DB_PASSWORD:-YcROFGC9lu}@${DB_HOST:-178.254.12.86}:${DB_PORT:-5000}/${DB_NAME:-postgres}?schema=public"
+    log "INFO" "Generated DATABASE_URL: $DB_URL"
+    # Export it directly
+    export DATABASE_URL="$DB_URL"
+    
     log "INFO" "Starting production server on port $PORT..."
-    NODE_ENV=production PORT=$PORT nohup node dist/server.js > "$LOG_FILE" 2>&1 &
+    NODE_ENV=production PORT=$PORT nohup node -r dotenv/config dist/server.js dotenv_config_path=.env.production > "$LOG_FILE" 2>&1 &
     
     # Save PID
     local pid=$!
