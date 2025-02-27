@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-const LoginPage = () => {
+function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const { login, isLoading, error, verifySession } = useAuth();
@@ -38,13 +38,13 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md w-full space-y-8 p-8 bg-secondary rounded-lg shadow-md">
+      <div className="max-w-lg w-full space-y-10 p-12 bg-secondary rounded-lg shadow-xl">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-white">WealthArc</h2>
-          <p className="mt-2 text-gray-300">Sign in to your account</p>
+          <h2 className="text-4xl font-bold text-white">WealthArc</h2>
+          <p className="mt-3 text-xl text-gray-300">Sign in to your account</p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-10 space-y-8" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-500 text-white p-3 rounded-md">
               {error}
@@ -68,7 +68,7 @@ const LoginPage = () => {
                 name="username"
                 type="text"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-base"
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -81,7 +81,7 @@ const LoginPage = () => {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-base"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -93,13 +93,13 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              className="group relative w-full flex justify-center py-3 px-6 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
           
-          <div className="text-center text-sm text-gray-300">
+          <div className="text-center text-base text-gray-300">
             Don't have an account?{' '}
             <Link href="/auth/register" className="font-medium text-primary hover:underline">
               Register here
@@ -109,6 +109,14 @@ const LoginPage = () => {
       </div>
     </div>
   );
-};
+}
 
-export default LoginPage; 
+export default function LoginPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Suspense fallback={<div>Loading...</div>}>
+        <LoginForm />
+      </Suspense>
+    </div>
+  );
+} 

@@ -67,12 +67,16 @@ start_server() {
     echo "Checking and installing dependencies..."
     npm install
     
-    # Build and start with explicit host binding
+    # Build without export
     echo "Building Next.js application..."
-    npm run build
+    npm run build || {
+        echo -e "${RED}Build failed. See errors above.${NC}"
+        return 1
+    }
     
+    # Start server directly (skip static export)
     echo "Starting server..."
-    NODE_ENV=production HOST=0.0.0.0 PORT=$PORT npm run start > "$LOG_FILE" 2>&1 &
+    NODE_ENV=production PORT=$PORT npm start > "$LOG_FILE" 2>&1 &
     
     # Store PID and wait to ensure process is running
     local pid=$!
