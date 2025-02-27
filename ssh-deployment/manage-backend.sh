@@ -104,6 +104,12 @@ start_server() {
         return 1
     }
     
+    log "INFO" "Generating Prisma client..."
+    npx prisma generate || {
+        log "ERROR" "Failed to generate Prisma client"
+        return 1
+    }
+    
     log "INFO" "Building application..."
     npm run build --silent || {
         log "ERROR" "Build failed"
