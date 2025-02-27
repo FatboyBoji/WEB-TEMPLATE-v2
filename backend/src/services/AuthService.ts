@@ -20,47 +20,70 @@ export class AuthService {
   }
 
   async register(userData: RegisterUserDto, userAgent?: string, ipAddress?: string): Promise<{ user: User; tokens: AuthTokens }> {
-    // Validate password
-    const passwordErrors = PasswordPolicyService.validatePassword(userData.password);
-    if (passwordErrors.length > 0) {
-      throw new Error(passwordErrors.join(', '));
-    }
-
-    // Check if username already exists
-    const existingUser = await this.prisma.user.findFirst({
-      where: {
-        OR: [
-          { username: userData.username },
-          { email: userData.email }
-        ]
+    try {
+      // Validate email format
+      if (!PasswordPolicyService.validateEmail(userData.email)) {
+        throw new Error('Invalid email format');
       }
-    });
-
-    if (existingUser) {
-      throw new Error('Username or email already exists');
-    }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(userData.password, salt);
-
-    // Create user
-    const newUser = await this.prisma.user.create({
-      data: {
-        username: userData.username,
-        email: userData.email,
-        passwordHash: hashedPassword,
-        isActive: true // Set to active immediately
+      
+      // Validate password against policy
+      const passwordErrors = PasswordPolicyService.validatePassword(userData.password);
+      if (passwordErrors.length > 0) {
+        throw new Error(passwordErrors.join(', '));
       }
-    });
-
-    // Auto-login: Create a session for the new user
-    const tokens = await this.createSession(newUser, userAgent, ipAddress);
-
-    return {
-      user: newUser,
-      tokens
-    };
+      
+      // Check if username is already taken
+      const existingUsername = await this.prisma.user.findUnique({
+        where: { username: userData.username }
+      });
+      
+      if (existingUsername) {
+        throw new Error('Username is already taken');
+      }
+      
+      // Check if email is already registered
+      const existingEmail = await this.prisma.user.findUnique({
+        where: { email: userData.email }
+      });
+      
+      if (existingEmail) {
+        throw new Error('Email is already registered');
+      }
+      
+      // Get the default session limit from the admin user
+      const adminUser = await this.prisma.user.findFirst({
+        where: { role: 'admin' },
+        select: { maxSessionCount: true }
+      });
+      
+      const defaultSessionLimit = adminUser?.maxSessionCount || 5;
+      
+      // Hash the password
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(userData.password, salt);
+      
+      // Create new user
+      const newUser = await this.prisma.user.create({
+        data: {
+          username: userData.username,
+          email: userData.email,
+          passwordHash,
+          isActive: true,
+          maxSessionCount: defaultSessionLimit // Use the default session limit
+        }
+      });
+      
+      // Auto-login: Create a session for the new user
+      const tokens = await this.createSession(newUser, userAgent, ipAddress);
+      
+      return {
+        user: newUser,
+        tokens
+      };
+    } catch (error) {
+      console.error('Error registering user:', error);
+      throw error;
+    }
   }
 
   async login(credentials: UserCredentials, userAgent?: string, ipAddress?: string): Promise<{ user: User; tokens: AuthTokens }> {
@@ -74,7 +97,10 @@ export class AuthService {
 
       // Find user
       const user = await this.prisma.user.findUnique({
-        where: { username: credentials.username }
+        where: { username: credentials.username },
+        include: { 
+          sessions: true // Include sessions to check count
+        }
       });
 
       console.log('User found:', !!user);
@@ -87,6 +113,12 @@ export class AuthService {
       if (user.isBlocked) {
         console.log('User account is blocked');
         throw new Error('Account is blocked. Please contact support.');
+      }
+
+      // Check if user has reached their session limit
+      if (user.maxSessionCount > 0 && user.sessions.length >= user.maxSessionCount) {
+        console.log(`User ${user.username} has reached their session limit of ${user.maxSessionCount}`);
+        throw new Error('You have reached your maximum number of active sessions. Please log out from another device.');
       }
 
       // Verify password

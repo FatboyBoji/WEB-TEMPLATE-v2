@@ -24,6 +24,7 @@ model User {
   updatedAt           DateTime  @updatedAt @map("updated_at")
   createdBy           Int?      @map("created_by")
   updatedBy           Int?      @map("updated_by")
+  maxSessionCount     Int       @default(5)
   
   // Relations
   sessions            Session[]

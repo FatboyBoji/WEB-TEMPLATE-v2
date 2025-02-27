@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import api from '@/lib/api';
+import UserManagement from '@/components/admin/UserManagement';
+import UserSessionLimits from '@/components/admin/UserSessionLimits';
+import SystemSettings from '@/components/admin/SystemSettings';
 
 interface User {
   id: number;
@@ -17,11 +20,12 @@ interface User {
 }
 
 export default function AdminDashboardPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Local loading state
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('users');
   
   // Fetch users on component mount
   useEffect(() => {
@@ -33,7 +37,7 @@ export default function AdminDashboardPage() {
     
     const fetchUsers = async () => {
       try {
-        setIsLoading(true);
+        setLoading(true); // Use our local loading state
         const { data } = await api.get('/admin/users');
         if (data.success) {
           setUsers(data.data);
@@ -42,7 +46,7 @@ export default function AdminDashboardPage() {
         setError('Failed to load users');
         console.error(err);
       } finally {
-        setIsLoading(false);
+        setLoading(false); // Use our local loading state
       }
     };
     
@@ -86,96 +90,51 @@ export default function AdminDashboardPage() {
     }
   };
   
+  if (authLoading || loading) { // Check both loading states
+    return <div className="p-8 text-center">Loading...</div>;
+  }
+
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+        <p>You do not have permission to access this page.</p>
+      </div>
+    );
+  }
+
   return (
     <ProtectedLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2 text-[#09BC8A]">Admin Dashboard</h1>
-        <p className="text-gray-300">Manage users and sessions</p>
-      </div>
-      
-      {error && (
-        <div className="bg-red-500 bg-opacity-20 border border-red-500 text-white p-3 rounded-lg mb-4">
-          {error}
-        </div>
-      )}
-      
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#09BC8A]"></div>
-        </div>
-      ) : (
-        <div className="bg-[#212121] rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-700">
-              <thead className="bg-[#004346]">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Last Login</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-[#2D2D2D] divide-y divide-gray-700">
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-white">{user.username}</div>
-                          <div className="text-sm text-gray-400">{user.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.isBlocked 
-                          ? 'bg-red-800 text-red-100' 
-                          : user.isActive 
-                            ? 'bg-green-800 text-green-100' 
-                            : 'bg-gray-800 text-gray-100'
-                      }`}>
-                        {user.isBlocked ? 'Blocked' : user.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {user.role}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleTerminateSession(user.id)}
-                          className={`px-3 py-1.5 rounded-md ${
-                            user.isActive 
-                              ? 'bg-red-500 hover:bg-red-600 text-white' 
-                              : 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                          }`}
-                          disabled={!user.isActive}
-                        >
-                          {user.isActive ? 'Terminate Session' : 'No Active Session'}
-                        </button>
-                        <button
-                          onClick={() => handleToggleBlock(user.id, user.isBlocked)}
-                          className={`px-3 py-1.5 rounded-md ${
-                            user.isBlocked 
-                              ? 'bg-green-600 hover:bg-green-700 text-white' 
-                              : 'bg-red-500 hover:bg-red-600 text-white'
-                          }`}
-                        >
-                          {user.isBlocked ? 'Unblock User' : 'Block User'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+        
+        <div className="mb-6">
+          <div className="border-b border-gray-700 flex">
+            <button
+              className={`py-2 px-4 ${activeTab === 'users' ? 'border-b-2 border-primary text-primary' : 'text-gray-400'}`}
+              onClick={() => setActiveTab('users')}
+            >
+              User Management
+            </button>
+            <button
+              className={`py-2 px-4 ${activeTab === 'sessions' ? 'border-b-2 border-primary text-primary' : 'text-gray-400'}`}
+              onClick={() => setActiveTab('sessions')}
+            >
+              Session Limits
+            </button>
+            <button
+              className={`py-2 px-4 ${activeTab === 'settings' ? 'border-b-2 border-primary text-primary' : 'text-gray-400'}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              System Settings
+            </button>
           </div>
         </div>
-      )}
+        
+        {activeTab === 'users' && <UserManagement />}
+        {activeTab === 'sessions' && <UserSessionLimits />}
+        {activeTab === 'settings' && <SystemSettings />}
+      </div>
     </ProtectedLayout>
   );
 } 

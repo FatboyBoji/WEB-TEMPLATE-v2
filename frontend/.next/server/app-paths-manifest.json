@@ -1,9 +1,9 @@
 {
   "/auth/login/page": "app/auth/login/page.js",
-  "/profile/page": "app/profile/page.js",
+  "/auth/register/page": "app/auth/register/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/wallet/page": "app/wallet/page.js",
   "/admin/page": "app/admin/page.js",
   "/page": "app/page.js",
-  "/statistics/page": "app/statistics/page.js"
+  "/statistics/page": "app/statistics/page.js",
+  "/wallet/page": "app/wallet/page.js"
 }

@@ -64,4 +64,9 @@ export class PasswordPolicyService {
             - Contain at least one special character
             - Not contain common patterns or repeating characters`;
     }
+
+    static validateEmail(email: string): boolean {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
 } 

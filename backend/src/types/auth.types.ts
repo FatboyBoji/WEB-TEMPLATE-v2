@@ -24,4 +24,17 @@ export interface AuthTokens {
 
 export interface RefreshTokenDto {
   refreshToken: string;
+}
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  isBlocked: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  tokenVersion: number;
+  maxSessionCount: number;
 } 
