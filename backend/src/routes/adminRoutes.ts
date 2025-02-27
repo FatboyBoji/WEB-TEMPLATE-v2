@@ -21,7 +21,17 @@ router.get('/users', authenticateToken, requireRole('admin'), async (req, res) =
       },
       orderBy: {
         createdAt: 'desc'
+      },
+      // here we only dont show special role user because i dont want him to get blocked or terminated as chef - or better to just select role: admin
+      // where:{
+      //   username: {
+      //     not: 'admin'
+      //   }
+      // }
+      where:{
+        role: 'user'
       }
+
     });
     
     res.json({

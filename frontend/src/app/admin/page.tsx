@@ -145,19 +145,29 @@ export default function AdminDashboardPage() {
                       {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleTerminateSession(user.id)}
-                        className="text-red-400 hover:text-red-300 mr-4"
-                        disabled={!user.isActive}
-                      >
-                        Terminate Session
-                      </button>
-                      <button
-                        onClick={() => handleToggleBlock(user.id, user.isBlocked)}
-                        className={user.isBlocked ? "text-green-400 hover:text-green-300" : "text-red-400 hover:text-red-300"}
-                      >
-                        {user.isBlocked ? 'Unblock User' : 'Block User'}
-                      </button>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleTerminateSession(user.id)}
+                          className={`px-3 py-1.5 rounded-md ${
+                            user.isActive 
+                              ? 'bg-red-500 hover:bg-red-600 text-white' 
+                              : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                          }`}
+                          disabled={!user.isActive}
+                        >
+                          {user.isActive ? 'Terminate Session' : 'No Active Session'}
+                        </button>
+                        <button
+                          onClick={() => handleToggleBlock(user.id, user.isBlocked)}
+                          className={`px-3 py-1.5 rounded-md ${
+                            user.isBlocked 
+                              ? 'bg-green-600 hover:bg-green-700 text-white' 
+                              : 'bg-red-500 hover:bg-red-600 text-white'
+                          }`}
+                        >
+                          {user.isBlocked ? 'Unblock User' : 'Block User'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

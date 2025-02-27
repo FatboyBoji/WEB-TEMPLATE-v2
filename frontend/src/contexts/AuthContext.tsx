@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import axios, { CancelTokenSource } from 'axios';
 import { useRouter } from 'next/navigation';
 
 // Types
@@ -16,6 +16,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  verifySession: () => Promise<boolean>;
   error: string | null;
 }
 
@@ -37,28 +38,19 @@ api.interceptors.response.use(
     // Skip refresh token for auth endpoints to prevent loops
     const isAuthEndpoint = originalRequest.url?.includes('/auth/login') || 
                           originalRequest.url?.includes('/auth/register') ||
-                          originalRequest.url?.includes('/auth/refresh');
+                          originalRequest.url?.includes('/auth/verify-session');
     
     // If error is 401 and we haven't already tried to refresh and it's not an auth endpoint
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
       
       try {
-        // Attempt to refresh token
-        const { data } = await api.post('/auth/refresh');
-        
-        // If successful, set the new access token
-        if (data.success) {
-          localStorage.setItem('accessToken', data.data.accessToken);
-          api.defaults.headers.common['Authorization'] = `Bearer ${data.data.accessToken}`;
-          
-          // Retry the original request
-          return api(originalRequest);
-        }
+        // Don't try to refresh here - redirect instead
+        window.location.href = '/auth/login?session=expired';
+        return Promise.reject(error);
       } catch (refreshError) {
-        // If refresh fails, logout and redirect to login
         localStorage.removeItem('accessToken');
-        window.location.href = '/auth/login';
+        localStorage.removeItem('refreshToken');
         return Promise.reject(refreshError);
       }
     }
@@ -73,6 +65,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  
+  const checkSessionCancelSource = useRef<CancelTokenSource | null>(null);
+  const renewSessionCancelSource = useRef<CancelTokenSource | null>(null);
   
   // Check if user is authenticated on mount
   useEffect(() => {
@@ -208,6 +203,121 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   };
   
+  // Add these new functions to check and renew session
+  const checkSession = async (refreshToken: string): Promise<boolean> => {
+    try {
+      // Cancel any previous request
+      if (checkSessionCancelSource.current) {
+        checkSessionCancelSource.current.cancel('Operation canceled due to new request.');
+      }
+
+      // Create a new cancel token
+      checkSessionCancelSource.current = axios.CancelToken.source();
+      
+      console.log('Checking session validity');
+      const response = await api.post('/auth/check-session', 
+        { refreshToken }, 
+        { cancelToken: checkSessionCancelSource.current.token }
+      );
+      return response.data.success;
+    } catch (error) {
+      if (axios.isCancel(error)) {
+        console.log('Request canceled:', error.message);
+      } else {
+        console.error('Session check failed:', error);
+      }
+      return false;
+    }
+  };
+
+  const renewSession = async (refreshToken: string): Promise<boolean> => {
+    try {
+      // Cancel any previous request
+      if (renewSessionCancelSource.current) {
+        renewSessionCancelSource.current.cancel('Operation canceled due to new request.');
+      }
+
+      // Create a new cancel token
+      renewSessionCancelSource.current = axios.CancelToken.source();
+      
+      console.log('Renewing session');
+      const response = await api.post('/auth/renew-session', 
+        { refreshToken }, 
+        { cancelToken: renewSessionCancelSource.current.token }
+      );
+      
+      if (response.data.success) {
+        // Update tokens
+        const newAccessToken = response.data.data.accessToken;
+        const newRefreshToken = response.data.data.refreshToken;
+        
+        console.log('Session renewed successfully, received new tokens');
+        localStorage.setItem('accessToken', newAccessToken);
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
+        
+        // Update authorization header
+        api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      if (axios.isCancel(error)) {
+        console.log('Request canceled:', error.message);
+      } else {
+        console.error('Session renewal failed:', error);
+      }
+      return false;
+    }
+  };
+
+  // Replace the current verifySession with this modular approach
+  const verifySession = async (): Promise<boolean> => {
+    setIsLoading(true);
+    
+    try {
+      console.log('Starting session verification process');
+      
+      // Get refresh token
+      const refreshToken = localStorage.getItem('refreshToken');
+      
+      if (!refreshToken) {
+        console.error('No refresh token available');
+        await logout();
+        return false;
+      }
+      
+      // First just check if session is valid
+      const isValid = await checkSession(refreshToken);
+      
+      if (!isValid) {
+        console.log('Session invalid, logging out');
+        // Use the existing logout function that we know works
+        await logout();
+        return false;
+      }
+      
+      // If valid, renew the session
+      const renewed = await renewSession(refreshToken);
+      
+      if (!renewed) {
+        console.log('Session renewal failed, logging out');
+        await logout();
+        return false;
+      }
+      
+      setIsLoading(false);
+      return true;
+    } catch (error) {
+      console.error('Session verification error:', error);
+      setIsLoading(false);
+      return false;
+    }
+  };
+  
   return (
     <AuthContext.Provider
       value={{
@@ -217,6 +327,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         login,
         register,
         logout,
+        verifySession,
         error,
       }}
     >

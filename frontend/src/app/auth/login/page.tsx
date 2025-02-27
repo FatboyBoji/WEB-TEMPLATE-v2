@@ -1,18 +1,40 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, verifySession } = useAuth();
+  const searchParams = useSearchParams();
+  const [statusMessage, setStatusMessage] = useState<{type: 'error'|'info'|'success', message: string}|null>(null);
+  const [attemptedVerification, setAttemptedVerification] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await login(username, password);
   };
+
+  useEffect(() => {
+    const sessionExpired = searchParams.get('session') === 'expired';
+    
+    // Show a message immediately when redirected due to session expiry
+    if (sessionExpired && !attemptedVerification) {
+      setStatusMessage({
+        type: 'info',
+        message: 'Your session has expired. Please log in again to continue.'
+      });
+      
+      setAttemptedVerification(true);
+      
+      // We don't need to attempt verification anymore - we've already been redirected
+      // due to session expiry, so just ask the user to log in again
+      console.log('Session expired, user needs to log in again');
+    }
+  }, [searchParams, attemptedVerification]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -26,6 +48,15 @@ const LoginPage = () => {
           {error && (
             <div className="bg-red-500 text-white p-3 rounded-md">
               {error}
+            </div>
+          )}
+          
+          {statusMessage && (
+            <div className={`${
+              statusMessage.type === 'error' ? 'bg-red-500' : 
+              statusMessage.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+            } text-white p-3 rounded-md`}>
+              {statusMessage.message}
             </div>
           )}
           

@@ -56,4 +56,11 @@ router.post('/terminate-sessions/:userId', authenticateToken, requireRole('admin
   }
 });
 
+// Add this new route
+router.post('/verify-session', authController.verifySession.bind(authController));
+
+// Add these new routes
+router.post('/check-session', authController.checkSession.bind(authController));
+router.post('/renew-session', authController.renewSession.bind(authController));
+
 export default router; 

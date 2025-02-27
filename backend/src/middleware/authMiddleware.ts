@@ -38,9 +38,14 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     
     next();
   } catch (error) {
-    return res.status(403).json({
+    // Important: Use 401 for token issues, not 403
+    // 401 = Unauthorized (not authenticated)
+    // 403 = Forbidden (authenticated but not authorized)
+    const message = error instanceof Error ? error.message : 'Invalid or expired token';
+    
+    return res.status(401).json({
       success: false,
-      message: 'Invalid or expired token',
+      message,
     });
   }
 };

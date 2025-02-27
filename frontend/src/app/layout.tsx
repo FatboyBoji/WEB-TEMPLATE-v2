@@ -1,6 +1,7 @@
 import './globals.css';
 import { Chakra_Petch } from 'next/font/google';
 import AuthProviderWrapper from '@/components/auth/AuthProviderWrapper';
+import SessionHandler from '@/components/auth/SessionHandler';
 
 const chakraPetch = Chakra_Petch({
   subsets: ['latin'],
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={chakraPetch.className}>
         <AuthProviderWrapper>
+          <SessionHandler />
           {children}
         </AuthProviderWrapper>
       </body>

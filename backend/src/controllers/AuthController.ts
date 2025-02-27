@@ -82,10 +82,31 @@ export class AuthController {
 
   async refreshToken(req: Request, res: Response): Promise<void> {
     try {
-      // Get refresh token from cookie or request body
-      const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+      console.log('Refresh request body:', req.body);
+      console.log('Refresh request query:', req.query);
+      
+      // First try to get token from body, then URL, then headers
+      const refreshToken = 
+        (req.body && req.body.refreshToken) || 
+        (req.query && req.query.refreshToken as string) ||
+        req.cookies?.refreshToken ||
+        req.headers['x-refresh-token'];
+      
+      console.log('Refresh token request received');
+      console.log('Request body:', req.body);
+      console.log('Request headers:', req.headers);
+      console.log('Request query:', req.query);
       
       if (!refreshToken) {
+        console.log('No refresh token provided in:', {
+          hasCookies: !!req.cookies,
+          hasBody: !!req.body,
+          bodyKeys: req.body ? Object.keys(req.body) : [],
+          bodyType: typeof req.body,
+          queryParams: req.query,
+          contentType: req.headers['content-type']
+        });
+        
         res.status(401).json({
           success: false,
           message: 'Refresh token is required',
@@ -93,27 +114,25 @@ export class AuthController {
         return;
       }
       
+      console.log('Refresh token first 10 chars:', refreshToken.substring(0, 10) + '...');
+      
       const userAgent = req.headers['user-agent'];
       const ipAddress = req.ip;
       
+      console.log('Attempting to refresh token');
       const tokens = await this.authService.refreshToken(refreshToken, userAgent, ipAddress);
-      
-      // Set new refresh token as HTTP-only cookie
-      res.cookie('refreshToken', tokens.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        path: '/'
-      });
+      console.log('Token refreshed successfully');
       
       res.status(200).json({
         success: true,
         message: 'Token refreshed successfully',
         data: {
-          accessToken: tokens.accessToken
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken
         }
       });
     } catch (error: unknown) {
+      console.error('Token refresh error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Token refresh failed';
       res.status(401).json({
         success: false,
@@ -157,5 +176,131 @@ export class AuthController {
 
   async terminateUserSessions(userId: number): Promise<void> {
     await this.authService.terminateAllUserSessions(userId);
+  }
+
+  async verifySession(req: Request, res: Response): Promise<void> {
+    try {
+      console.log('Session verification request received');
+      
+      // Get refresh token from request body - just like logout
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        console.log('No refresh token provided for verification');
+        res.status(401).json({
+          success: false,
+          message: 'Refresh token is required',
+        });
+        return;
+      }
+      
+      console.log('Verifying session with refresh token');
+      
+      // Use the existing refreshToken method to generate new tokens
+      const tokens = await this.authService.refreshToken(
+        refreshToken,
+        req.headers['user-agent'],
+        req.ip
+      );
+      
+      res.status(200).json({
+        success: true,
+        message: 'Session verified and tokens refreshed',
+        data: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken
+        }
+      });
+    } catch (error: unknown) {
+      console.error('Session verification error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Session verification failed';
+      res.status(401).json({
+        success: false,
+        message: errorMessage,
+      });
+    }
+  }
+
+  // Just check if the refresh token is still valid, without creating new tokens
+  async checkSession(req: Request, res: Response): Promise<void> {
+    try {
+      console.log('Session check request received');
+      
+      // Get refresh token from request body
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        console.log('No refresh token provided for session check');
+        res.status(401).json({
+          success: false,
+          message: 'Refresh token is required',
+        });
+        return;
+      }
+      
+      // Just verify the token without creating new ones
+      const isValid = await this.authService.isRefreshTokenValid(refreshToken);
+      
+      if (isValid) {
+        res.status(200).json({
+          success: true,
+          message: 'Session is valid'
+        });
+      } else {
+        res.status(401).json({
+          success: false,
+          message: 'Session is invalid or expired'
+        });
+      }
+    } catch (error: unknown) {
+      console.error('Session check error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Session check failed';
+      res.status(401).json({
+        success: false,
+        message: errorMessage,
+      });
+    }
+  }
+
+  // Only renew tokens if session is confirmed valid
+  async renewSession(req: Request, res: Response): Promise<void> {
+    try {
+      console.log('Session renewal request received');
+      
+      // Get refresh token from request body
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        console.log('No refresh token provided for session renewal');
+        res.status(401).json({
+          success: false,
+          message: 'Refresh token is required',
+        });
+        return;
+      }
+      
+      // Generate new tokens using existing method
+      const tokens = await this.authService.refreshToken(
+        refreshToken,
+        req.headers['user-agent'],
+        req.ip
+      );
+      
+      res.status(200).json({
+        success: true,
+        message: 'Session renewed successfully',
+        data: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken
+        }
+      });
+    } catch (error: unknown) {
+      console.error('Session renewal error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Session renewal failed';
+      res.status(401).json({
+        success: false,
+        message: errorMessage,
+      });
+    }
   }
 } 

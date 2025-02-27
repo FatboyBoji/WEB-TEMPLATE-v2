@@ -30,14 +30,6 @@ app.use('/api/budget', budgetRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Add a test endpoint
-app.post('/api/test-auth', (req, res) => {
-  console.log('Test auth endpoint called', req.body);
-  res.status(200).json({
-    success: true,
-    message: 'Test auth successful',
-    received: req.body
-  });
-});
 
 // Add a healthcheck route
 app.get('/api/health', (req, res) => {

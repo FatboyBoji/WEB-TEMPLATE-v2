@@ -16,3 +16,5 @@
 2025-02-23 10:03:36.468 CET [11768] TIPP:  Die weitere Logausgabe wird im Verzeichnis »log« erscheinen.
 2025-02-24 12:34:58.075 CET [6412] LOG:  Logausgabe wird an Logsammelprozess umgeleitet
 2025-02-24 12:34:58.075 CET [6412] TIPP:  Die weitere Logausgabe wird im Verzeichnis »log« erscheinen.
+2025-02-27 10:10:11.930 CET [100512] LOG:  Logausgabe wird an Logsammelprozess umgeleitet
+2025-02-27 10:10:11.930 CET [100512] TIPP:  Die weitere Logausgabe wird im Verzeichnis »log« erscheinen.

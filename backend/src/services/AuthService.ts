@@ -138,42 +138,91 @@ export class AuthService {
 
   async refreshToken(refreshToken: string, userAgent?: string, ipAddress?: string): Promise<AuthTokens> {
     try {
-      // Find session by refresh token
-      const session = await this.prisma.session.findFirst({
-        where: { 
-          refreshToken: refreshToken 
-        },
-        include: { 
-          user: true 
-        }
+      // Decode the token to get the sessionId
+      const decoded = jwt.decode(refreshToken) as TokenPayload;
+      
+      if (!decoded || !decoded.sessionId) {
+        throw new Error('Invalid refresh token format');
+      }
+      
+      // Find the session by ID
+      const session = await this.prisma.session.findUnique({
+        where: { id: decoded.sessionId },
+        include: { user: true }
       });
 
       if (!session) {
+        console.log('Session not found:', decoded.sessionId);
+        throw new Error('Session not found');
+      }
+      
+      // Verify the refresh token matches
+      if (session.refreshToken !== refreshToken) {
+        console.log('Refresh token mismatch');
         throw new Error('Invalid refresh token');
       }
 
       // Check if token is expired
       if (new Date() > session.expiresAt) {
-        // Delete expired session
+        console.log('Refresh token expired');
         await this.prisma.session.delete({
           where: { id: session.id }
-        });
+        }).catch(err => console.warn('Failed to delete expired session:', err));
+        
         throw new Error('Refresh token expired');
       }
 
-      // Check if user is still active
-      if (!session.user.isActive) {
-        throw new Error('Account is disabled');
+      // Check if user is still active and not blocked
+      if (!session.user.isActive || session.user.isBlocked) {
+        console.log('User inactive or blocked');
+        throw new Error(session.user.isBlocked ? 'Account is blocked' : 'Account is inactive');
       }
 
-      // Delete old session
-      await this.prisma.session.delete({
-        where: { id: session.id }
+      // Check if token version matches
+      if (session.user.tokenVersion !== decoded.tokenVersion) {
+        console.log('Token version mismatch');
+        throw new Error('Token version mismatch');
+      }
+
+      // Create new tokens
+      const payload: TokenPayload = {
+        userId: session.user.id,
+        username: session.user.username,
+        role: session.user.role,
+        sessionId: session.id,
+        tokenVersion: session.user.tokenVersion
+      };
+
+      // Generate new access token
+      const newAccessToken = jwt.sign(payload, this.JWT_SECRET, {
+        expiresIn: this.ACCESS_TOKEN_EXPIRATION
       });
 
-      // Create new session with new tokens
-      return this.createSession(session.user, userAgent, ipAddress);
+      // Generate new refresh token
+      const newRefreshToken = jwt.sign(payload, this.JWT_SECRET, {
+        expiresIn: this.REFRESH_TOKEN_EXPIRATION
+      });
+
+      // Update session with new refresh token
+      await this.prisma.session.update({
+        where: { id: session.id },
+        data: {
+          refreshToken: newRefreshToken,
+          userAgent: userAgent || session.userAgent,
+          ipAddress: ipAddress || session.ipAddress,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Reset expiration to 7 days
+        }
+      }).catch(err => {
+        console.error('Failed to update session:', err);
+        throw new Error('Failed to refresh session');
+      });
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken
+      };
     } catch (error) {
+      console.error('Refresh token error:', error);
       throw error;
     }
   }
@@ -199,11 +248,23 @@ export class AuthService {
   }
 
   private async createSession(user: User, userAgent?: string, ipAddress?: string): Promise<AuthTokens> {
-    // Create payload for tokens
+    // Create session in database first to get the session ID
+    const session = await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        userAgent: userAgent || null,
+        ipAddress: ipAddress || null,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        refreshToken: '' // Will update this after creating tokens
+      }
+    });
+    
+    // Create payload for tokens including session ID
     const payload: TokenPayload = {
       userId: Number(user.id),
       username: user.username,
       role: user.role,
+      sessionId: session.id, // Include the session ID in payload
       tokenVersion: user.tokenVersion
     };
 
@@ -217,19 +278,10 @@ export class AuthService {
       expiresIn: this.REFRESH_TOKEN_EXPIRATION
     });
 
-    // Calculate expiration date for refresh token
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
-
-    // Create session in database
-    await this.prisma.session.create({
-      data: {
-        userId: user.id,
-        refreshToken: refreshToken,
-        userAgent: userAgent || null,
-        ipAddress: ipAddress || null,
-        expiresAt: expiresAt
-      }
+    // Update the session with the refresh token
+    await this.prisma.session.update({
+      where: { id: session.id },
+      data: { refreshToken }
     });
 
     return {
@@ -247,13 +299,28 @@ export class AuthService {
         where: { id: decoded.userId }
       });
       
-      if (!user || user.tokenVersion !== decoded.tokenVersion) {
-        throw new Error('Token is invalid or expired');
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      if (user.tokenVersion !== decoded.tokenVersion) {
+        throw new Error('Token has been invalidated');
+      }
+      
+      if (user.isBlocked) {
+        throw new Error('Account is blocked');
       }
       
       return decoded;
     } catch (error) {
-      throw new Error('Invalid token');
+      // Make sure to properly pass on JWT errors
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new Error('Token has expired');
+      } else if (error instanceof jwt.JsonWebTokenError) {
+        throw new Error('Invalid token');
+      } else {
+        throw error;
+      }
     }
   }
 
@@ -273,5 +340,52 @@ export class AuthService {
     await this.prisma.session.deleteMany({
       where: { userId }
     });
+  }
+
+  // New method that just checks if refresh token is valid without creating new tokens
+  async isRefreshTokenValid(refreshToken: string): Promise<boolean> {
+    try {
+      // Decode the token to get the sessionId
+      const decoded = jwt.decode(refreshToken) as TokenPayload;
+      
+      if (!decoded || !decoded.sessionId) {
+        return false;
+      }
+      
+      // Find the session by ID
+      const session = await this.prisma.session.findUnique({
+        where: { id: decoded.sessionId },
+        include: { user: true }
+      });
+
+      if (!session) {
+        return false;
+      }
+      
+      // Verify the refresh token matches
+      if (session.refreshToken !== refreshToken) {
+        return false;
+      }
+
+      // Check if token is expired
+      if (new Date() > session.expiresAt) {
+        return false;
+      }
+
+      // Check if user is still active and not blocked
+      if (!session.user.isActive || session.user.isBlocked) {
+        return false;
+      }
+
+      // Check if token version matches
+      if (session.user.tokenVersion !== decoded.tokenVersion) {
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error checking refresh token validity:', error);
+      return false;
+    }
   }
 } 
