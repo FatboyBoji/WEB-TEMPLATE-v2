@@ -1,0 +1,67 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int       @id @default(autoincrement())
+  username            String    @unique
+  email               String    @unique
+  passwordHash        String    @map("password_hash")
+  role                String    @default("user")
+  isActive            Boolean   @default(false) @map("is_active")
+  isBlocked           Boolean   @default(false) @map("is_blocked")
+  isEmailVerified     Boolean   @default(false) @map("is_email_verified")
+  tokenVersion        Int       @default(0) @map("token_version")
+  lastLogin           DateTime? @map("last_login")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  createdBy           Int?      @map("created_by")
+  updatedBy           Int?      @map("updated_by")
+  
+  // Relations
+  sessions            Session[]
+  budgetItems         BudgetItem[]
+  
+  @@map("user_wa")
+}
+
+model Session {
+  id                String    @id @default(uuid())
+  userId            Int       @map("user_id")
+  refreshToken      String    @unique @map("refresh_token")
+  userAgent         String?   @map("user_agent")
+  ipAddress         String?   @map("ip_address")
+  expiresAt         DateTime  @map("expires_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_sessions_wa")
+}
+
+model BudgetItem {
+  id          String    @id @default(uuid())
+  userId      Int       @map("user_id")
+  name        String
+  amount      Float
+  itemType    String    @map("item_type") // 'income' or 'expense'
+  category    String    // 'fixed' or 'variable'
+  month       Int
+  year        Int
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("budget_items_wa")
+}

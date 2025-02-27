@@ -1,0 +1,82 @@
+SESA Web Application Template
+===========================
+
+
+Theme Configuration
+------------------
+Font: Chakra Petch
+Sizes:
+- Header: 32/150
+- Button: 18/150
+- Text: 14/150
+
+Colors:
+- Background: #192A38
+- Primary: #09BC8A
+- Secondary: #004346
+- Additional: #212121, #F3FFFC
+
+###################################################################################
+be consise and carefully and also marking in @information.txt if a aspect is completed.
+the backend structure is in @backend the database @db @init.sql @create_sessions.sql @create_test_user.sql 
+if the task is clear and u understand your ai rules then we can proceed!
+
+
+🛠 Step-by-Step Plan for Implementing Authentication
+📌 Phase 1: Database Setup (PostgreSQL) [COMPLETED]
+Goal:
+Set up the necessary tables for users and sessions.
+because our app is called wealth arc we want: the tables to be named user_wa and user_sessions_wa.
+
+Steps:
+
+Create users table (stores user credentials & profile). [COMPLETED]
+Create sessions table (stores session tokens & device info). [COMPLETED]
+Connect Prisma to PostgreSQL (DATABASE_URL in .env). [COMPLETED]
+Generate Prisma Migrations (npx prisma migrate dev). [COMPLETED]
+Seed a Test User for authentication testing. [COMPLETED]
+📌 Phase 2: Backend Setup (Node.js + Express) [IN PROGRESS]
+Goal:
+Implement authentication logic (register, login, token generation, session validation).
+
+Steps:
+
+Setup Express with Prisma (install dependencies). [COMPLETED]
+Implement Password Hashing using bcryptjs. [COMPLETED]
+Implement JWT Tokens: [COMPLETED]
+Access Token (valid for 30 min). [COMPLETED]
+Refresh Token (valid for 7 days). [COMPLETED]
+
+User Registration Route (POST /register) [COMPLETED]
+Hash the password and save the user. [COMPLETED]
+User Login Route (POST /login) [COMPLETED]
+Verify credentials and create a session. [COMPLETED]
+Token Refresh Route (POST /refresh) [COMPLETED]
+Validate the refresh token and issue a new access/refresh token. [COMPLETED]
+Logout Route (POST /logout) [COMPLETED]
+Delete session from DB. [COMPLETED]
+Protect Routes Middleware [COMPLETED]
+Validate access tokens for restricted endpoints. [COMPLETED]
+📌 Phase 3: Frontend Setup (Next.js) [IN PROGRESS]
+Goal:
+Create a simple UI for authentication.
+
+Steps:
+
+Setup Next.js with Axios for API calls. [COMPLETED]
+Implement Authentication Context to store session state. [COMPLETED]
+Build Registration & Login Pages (/register, /login). [IN PROGRESS]
+Handle Token Refresh Automatically (useEffect + API interceptors). [COMPLETED]
+Create Protected Routes (redirect if not authenticated). [IN PROGRESS]
+Implement Logout Handling. [COMPLETED]
+Create a Dashboard (/dashboard) displaying "Welcome, {username}". [PENDING]
+📌 Phase 4: Testing and Deployment [PENDING]
+Goal:
+Ensure authentication works smoothly and deploy to the server.
+
+Steps:
+
+Test login, refresh, and logout flows manually. [PENDING]
+Test with multiple users and devices. [PENDING]
+Deploy PostgreSQL, backend, and frontend. [PENDING]
+Monitor logs for any issues. [PENDING]
