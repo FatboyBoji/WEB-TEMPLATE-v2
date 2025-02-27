@@ -4,7 +4,7 @@
 APP_DIR="$HOME/webapp/sesa0001"
 PID_FILE="$APP_DIR/.nextjs.pid"
 LOG_FILE="$APP_DIR/.nextjs.log"
-PORT=55678
+PORT=55555
 
 # Source bash profile and NVM (more complete sourcing)
 export NVM_DIR="$HOME/.nvm"
@@ -72,7 +72,7 @@ start_server() {
     npm run build
     
     echo "Starting server..."
-    NODE_ENV=production HOST=0.0.0.0 PORT=45678 npm run start > "$LOG_FILE" 2>&1 &
+    NODE_ENV=production HOST=0.0.0.0 PORT=55555 npm run start > "$LOG_FILE" 2>&1 &
     
     # Store PID and wait to ensure process is running
     local pid=$!
@@ -83,7 +83,7 @@ start_server() {
     if ps -p $pid > /dev/null; then
         echo -e "${GREEN}Server started successfully (PID: $pid)${NC}"
         echo -e "${GREEN}Server logs are available at: $LOG_FILE${NC}"
-        echo -e "${GREEN}Access the website at: http://$(hostname -I | awk '{print $1}'):45678${NC}"
+        echo -e "${GREEN}Access the website at: http://$(hostname -I | awk '{print $1}'):55555${NC}"
     else
         echo -e "${RED}Server failed to start. Checking logs:${NC}"
         tail -n 10 "$LOG_FILE"
