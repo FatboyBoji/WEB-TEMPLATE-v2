@@ -117,7 +117,7 @@ start_server() {
     }
     
     log "INFO" "Starting production server on port $PORT..."
-    NODE_ENV=production nohup node dist/server.js > "$LOG_FILE" 2>&1 &
+    NODE_ENV=production PORT=$PORT nohup node dist/server.js > "$LOG_FILE" 2>&1 &
     
     # Save PID
     local pid=$!
