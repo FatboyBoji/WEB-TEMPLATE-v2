@@ -105,10 +105,16 @@ start_server() {
     }
     
     log "INFO" "Generating Prisma client..."
+    # Set DATABASE_URL directly for prisma generate
+    export DATABASE_URL="postgresql://u0155:YcROFGC9lu@178.254.12.86:5000/postgres?schema=u0155"
     npx prisma generate || {
         log "ERROR" "Failed to generate Prisma client"
         return 1
     }
+    
+    # Then set it again with search_path for runtime
+    export DATABASE_URL="postgresql://u0155:YcROFGC9lu@178.254.12.86:5000/postgres?schema=public&search_path=u0155,public"
+    log "INFO" "Runtime DATABASE_URL: $DATABASE_URL"
     
     log "INFO" "Building application..."
     npm run build --silent || {
@@ -123,9 +129,6 @@ start_server() {
     
     log "INFO" "Verifying environment variables..."
     echo "DATABASE_URL from env: ${DATABASE_URL:-Not Set}"
-    # Use the hardcoded schema name to ensure it's correct
-    export DATABASE_URL="postgresql://u0155:YcROFGC9lu@178.254.12.86:5000/postgres?schema=public&search_path=u0155,public"
-    log "INFO" "Generated DATABASE_URL: $DATABASE_URL"
     
     log "INFO" "Starting production server on port $PORT..."
     NODE_ENV=production PORT=$PORT nohup node -r dotenv/config dist/server.js dotenv_config_path=.env.production > "$LOG_FILE" 2>&1 &

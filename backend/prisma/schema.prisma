@@ -1,11 +1,13 @@
 // This is your Prisma schema file
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["u0155"]
 }
 
 model User {
@@ -31,6 +33,7 @@ model User {
   budgetItems         BudgetItem[]
   
   @@map("user_wa")
+  @@schema("u0155")
 }
 
 model Session {
@@ -47,6 +50,7 @@ model Session {
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("user_sessions_wa")
+  @@schema("u0155")
 }
 
 model BudgetItem {
@@ -65,4 +69,5 @@ model BudgetItem {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("budget_items_wa")
+  @@schema("u0155")
 }
