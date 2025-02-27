@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Configuration
-BACKEND_DIR="server_backend"
-PORT=55600
+# Configuration - UPDATED PATHS AND PORT
+BACKEND_DIR="../backend"  # Path relative to ssh-deployment folder
+PORT=55500  # Changed from 55600 to your desired port
 PID_FILE="$BACKEND_DIR/.pid"
 LOG_FILE="$BACKEND_DIR/backend.log"
 
@@ -30,6 +30,9 @@ log() {
         "ERROR") color=$RED ;;
         "DEBUG") color=$BLUE ;;
     esac
+    
+    # Create log directory if it doesn't exist
+    mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
     
     echo -e "${color}[$(timestamp)] [$level] $message${NC}"
     echo "[$(timestamp)] [$level] $message" >> "$LOG_FILE"

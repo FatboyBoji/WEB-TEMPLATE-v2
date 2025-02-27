@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Configuration
-APP_DIR="$HOME/webapp/sesa0001"
+# Configuration - UPDATED PATHS
+APP_DIR="../frontend"  # Path relative to ssh-deployment folder
 PID_FILE="$APP_DIR/.nextjs.pid"
 LOG_FILE="$APP_DIR/.nextjs.log"
-PORT=55555
+PORT=55555  # This is already your desired port
 
 # Source bash profile and NVM (more complete sourcing)
 export NVM_DIR="$HOME/.nvm"
