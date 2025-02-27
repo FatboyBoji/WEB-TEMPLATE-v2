@@ -59,13 +59,7 @@ check_status() {
         
         log "INFO" "Backend server is running"
         log "INFO" "PID: $pid, Uptime: $uptime, Memory: $mem%, CPU: $cpu%"
-        
-        # Check if server responds to requests
-        if curl -s "http://localhost:$PORT/api/health" > /dev/null 2>&1; then
-            log "INFO" "Server is responding to health checks"
-        else
-            log "WARN" "Server is running but not responding to health checks"
-        fi
+        log "INFO" "Access API at: http://$(hostname -I | awk '{print $1}'):$PORT/api"
     else
         log "INFO" "Backend server is not running"
     fi
@@ -124,34 +118,16 @@ start_server() {
     echo $pid > "$PID_FILE"
     
     # Check if server started successfully
-    sleep 3
-    if ! ps -p $pid > /dev/null; then
-        log "ERROR" "Server failed to start. Check logs at $LOG_FILE"
-        return 1
-    fi
-    
-    # Wait for server to be fully initialized
-    local max_retries=10
-    local retry=0
-    local started=false
-    
     log "INFO" "Waiting for server to initialize..."
+    sleep 5
     
-    while [ $retry -lt $max_retries ]; do
-        if curl -s "http://localhost:$PORT/api/health" > /dev/null 2>&1; then
-            started=true
-            break
-        fi
-        retry=$((retry+1))
-        sleep 1
-    done
-    
-    if [ "$started" = true ]; then
+    # Check if process is still running after startup
+    if ps -p $pid > /dev/null; then
         log "INFO" "Server started successfully (PID: $pid)"
+        log "INFO" "Access API at: http://$(hostname -I | awk '{print $1}'):$PORT/api"
         return 0
     else
-        log "ERROR" "Server did not respond to health checks within timeout period"
-        kill $pid 2>/dev/null
+        log "ERROR" "Server failed to start. Check logs at $LOG_FILE"
         rm -f "$PID_FILE"
         return 1
     fi

@@ -72,7 +72,7 @@ start_server() {
     npm run build
     
     echo "Starting server..."
-    NODE_ENV=production HOST=0.0.0.0 PORT=55555 npm run start > "$LOG_FILE" 2>&1 &
+    NODE_ENV=production HOST=0.0.0.0 PORT=$PORT npm run start > "$LOG_FILE" 2>&1 &
     
     # Store PID and wait to ensure process is running
     local pid=$!
